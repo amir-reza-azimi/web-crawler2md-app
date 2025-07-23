@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { crawlerService } from "./services/crawler";
 import { insertCrawlJobSchema } from "@shared/schema";
 import { z } from "zod";
+import archiver from "archiver";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create crawl job
@@ -70,26 +71,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const results = await storage.getCrawlResults(jobId);
       const job = await storage.getCrawlJob(jobId);
       
+      console.log(`Download request for job ${jobId}, found ${results.length} results`);
+      
       if (!job) {
         return res.status(404).json({ message: "Job not found" });
       }
 
-      const archiver = require('archiver');
       const archive = archiver('zip', { zlib: { level: 9 } });
+      
+      // Handle archive errors
+      archive.on('error', (err) => {
+        console.error('Archive error:', err);
+        throw err;
+      });
       
       res.attachment(`crawl-results-${jobId}.zip`);
       archive.pipe(res);
 
+      let fileCount = 0;
       results.forEach((result, index) => {
         if (result.markdownContent && result.status === 'success') {
           const fileName = `${index + 1}-${sanitizeFileName(result.title || result.url)}.md`;
+          console.log(`Adding file ${fileName} with ${result.markdownContent.length} characters`);
           archive.append(result.markdownContent, { name: fileName });
+          fileCount++;
         }
       });
 
+      console.log(`Added ${fileCount} files to archive`);
       await archive.finalize();
+      console.log('Archive finalized successfully');
     } catch (error) {
-      res.status(500).json({ message: "Failed to generate download" });
+      console.error('Download error:', error);
+      res.status(500).json({ message: "Failed to generate download", error: error.message });
     }
   });
 

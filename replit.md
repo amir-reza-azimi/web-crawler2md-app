@@ -47,9 +47,18 @@ The application uses three main tables:
 - **Error Handling**: Graceful handling of failed pages with error logging
 
 ### Storage Layer
-- **Interface-based Design**: IStorage interface allows for different storage implementations
-- **Current Implementation**: In-memory storage for development
+- **Interface-based Design**: IStorage interface allows for different storage implementations  
+- **Current Implementation**: In-memory storage with file-based persistence for development
+- **Data Persistence**: Automatic save/load of crawl jobs and results to prevent data loss during server restarts
 - **Production Ready**: Drizzle ORM integration for PostgreSQL persistence
+
+## Recent Changes
+
+### July 23, 2025
+- **Fixed Crawler Issues**: Resolved Puppeteer browser configuration and Chrome dependency issues
+- **Added Data Persistence**: Implemented file-based storage to prevent data loss during server restarts  
+- **Fixed Download Function**: Corrected archiver import and error handling for result downloads
+- **Enhanced Error Logging**: Added detailed logging throughout crawler service for better debugging
 
 ## Data Flow
 
