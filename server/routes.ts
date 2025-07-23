@@ -15,6 +15,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Start crawling in background
       crawlerService.crawlWebsite(job.id).catch(error => {
         console.error(`Crawling job ${job.id} failed:`, error);
+        console.error('Error details:', error.stack);
       });
       
       res.json(job);
@@ -81,7 +82,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       results.forEach((result, index) => {
         if (result.markdownContent && result.status === 'success') {
-          const fileName = `${index + 1}-${this.sanitizeFileName(result.title || result.url)}.md`;
+          const fileName = `${index + 1}-${sanitizeFileName(result.title || result.url)}.md`;
           archive.append(result.markdownContent, { name: fileName });
         }
       });

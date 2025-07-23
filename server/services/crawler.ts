@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import TurndownService from 'turndown';
 import { storage } from '../storage';
 import type { CrawlJob, InsertCrawlResult } from '@shared/schema';
+import { execSync } from 'child_process';
 
 export class CrawlerService {
   private turndownService: TurndownService;
@@ -15,20 +16,43 @@ export class CrawlerService {
   }
 
   async crawlWebsite(jobId: number): Promise<void> {
+    console.log(`Starting crawl job ${jobId}`);
     const job = await storage.getCrawlJob(jobId);
     if (!job) {
       throw new Error('Job not found');
     }
 
+    console.log(`Job ${jobId} config:`, { baseUrl: job.baseUrl, patterns: job.regexPatterns, maxDepth: job.maxDepth });
     await storage.updateCrawlJob(jobId, { status: 'running' });
 
     try {
+      console.log(`Launching browser for job ${jobId}`);
+      
+      // Find Chrome executable path
+      let executablePath: string | undefined;
+      try {
+        executablePath = execSync('which chromium', { encoding: 'utf8' }).trim();
+      } catch (error) {
+        console.warn('Could not find chromium, using default');
+      }
+      
       const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        executablePath,
+        args: [
+          '--no-sandbox', 
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu'
+        ],
       });
 
+      console.log(`Discovering URLs for job ${jobId}`);
       const discoveredUrls = await this.discoverUrls(browser, job);
+      console.log(`Job ${jobId}: Found ${discoveredUrls.length} matching URLs`);
       await storage.updateCrawlJob(jobId, { totalPages: discoveredUrls.length });
 
       const results: InsertCrawlResult[] = [];
